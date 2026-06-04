@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Записаться на интервью</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --accent: #1B56C8;
+  --accent-light: #EEF2FF;
+  --orange: #E84A0C;
+  --orange-light: #FFF4EE;
+  --success: #065F46;
+  --success-light: #D1FAE5;
+  --radius: 12px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  background: var(--tg-theme-bg-color, var(--bg));
+  color: var(--tg-theme-text-color, var(--text));
+  min-height: 100vh;
+  padding: 16px;
+}
+
+h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+p  { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+.section { margin-bottom: 20px; }
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* Calendar */
+.calendar {
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.cal-header span {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.cal-nav {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-nav:hover { background: var(--accent-light); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 8px;
+}
+
+.cal-day-name {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+.cal-day {
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-day:hover:not(.disabled):not(.empty) { background: var(--accent-light); color: var(--accent); }
+.cal-day.today { font-weight: 700; color: var(--accent); }
+.cal-day.selected { background: var(--accent); color: #fff; font-weight: 600; }
+.cal-day.disabled { color: #d1d5db; cursor: default; }
+.cal-day.empty { cursor: default; }
+.cal-day.has-slots::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--orange);
+  margin: 2px auto 0;
+}
+.cal-day.selected.has-slots::after { background: #fff; }
+
+/* Time slots */
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.slot {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.slot:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.slot.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Meet options */
+.meet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.meet-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.meet-btn:hover { border-color: var(--accent); }
+.meet-btn.selected { background: var(--accent-light); border-color: var(--accent); }
+.meet-btn .meet-icon { font-size: 24px; margin-bottom: 6px; }
+.meet-btn .meet-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.meet-btn .meet-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Input */
+.link-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border 0.15s;
+}
+.link-input:focus { border-color: var(--accent); }
+.link-input::placeholder { color: var(--muted); }
+
+/* Buttons */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-primary:disabled { opacity: 0.4; cursor: default; }
+.btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Summary */
+.summary-card {
+  background: var(--success-light);
+  border: 1px solid #A7F3D0;
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+.summary-row:not(:last-child) { border-bottom: 1px solid rgba(0,0,0,0.06); }
+.summary-icon { font-size: 18px; width: 24px; }
+.summary-label { color: var(--muted); font-size: 12px; }
+.summary-val { font-weight: 600; color: var(--text); }
+
+/* Steps */
+.step { display: none; }
+.step.active { display: block; }
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.breadcrumb .crumb { 
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.breadcrumb .crumb.done { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+.breadcrumb .crumb.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.breadcrumb .sep { color: var(--border); }
+</style>
+</head>
+<body>
+
+<!-- STEP 1: Pick date -->
+<div class="step active" id="step1">
+  <div class="breadcrumb">
+    <span class="crumb active">1 Дата</span>
+    <span class="sep">›</span>
+    <span class="crumb">2 Время</span>
+    <span class="sep">›</span>
+    <span class="crumb">3 Созвон</span>
+    <span class="sep">›</span>
+    <span class="crumb">4 Подтверждение</span>
+  </div>
+
+  <div class="section">
+    <h2>Выберите дату</h2>
+    <p style="margin-bottom:14px;">Доступные дни для интервью</p>
+    <div class="calendar">
+      <div class="cal-header">
+        <button class="cal-nav" id="prevMonth">‹</button>
+        <span id="calTitle"></span>
+        <button class="cal-nav" id="nextMonth">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="btn1" disabled onclick="goStep(2)">Выбрать время →</button>
+</div>
+
+<!-- STEP 2: Pick time -->
+<div class="step" id="step2">
+  <div class="breadcrumb">
+    <span class="crumb done">1 Дата</span>
+    <span class="sep">›</span>
+    <span class="crumb active">2 Время</span>
+    <span class="sep">›</span>
+    <span class="crumb">3 Созвон</span>
+    <span class="sep">›</span>
+    <span class="crumb">4 Подтверждение</span>
+  </div>
+
+  <div class="section">
+    <h2>Выберите время</h2>
+    <p id="selectedDateLabel" style="margin-bottom:14px;"></p>
+    <div class="slots-grid" id="slotsGrid"></div>
+  </div>
+
+  <button class="btn-primary" id="btn2" disabled onclick="goStep(3)">Выбрать формат созвона →</button>
+  <div style="height:10px;"></div>
+  <button class="btn-secondary" onclick="goStep(1)">← Назад</button>
+</div>
+
+<!-- STEP 3: Meet type -->
+<div class="step" id="step3">
+  <div class="breadcrumb">
+    <span class="crumb done">1 Дата</span>
+    <span class="sep">›</span>
+    <span class="crumb done">2 Время</span>
+    <span class="sep">›</span>
+    <span class="crumb active">3 Созвон</span>
+    <span class="sep">›</span>
+    <span class="crumb">4 Подтверждение</span>
+  </div>
+
+  <div class="section">
+    <h2>Формат созвона</h2>
+    <p style="margin-bottom:14px;">Как будем общаться?</p>
+    <div class="meet-grid">
+      <div class="meet-btn" id="meetOwn" onclick="selectMeet('own')">
+        <div class="meet-icon">🔗</div>
+        <div class="meet-title">Ввести ссылку</div>
+        <div class="meet-sub">Zoom, Teams и др.</div>
+      </div>
+      <div class="meet-btn" id="meetGmeet" onclick="selectMeet('gmeet')">
+        <div class="meet-icon">📹</div>
+        <div class="meet-title">Google Meet</div>
+        <div class="meet-sub">Создать автоматически</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="linkSection" style="display:none;">
+    <div class="label">Ссылка на созвон</div>
+    <input type="url" class="link-input" id="meetLink" placeholder="https://zoom.us/j/..." oninput="checkStep3()">
+  </div>
+
+  <div class="section" id="gmeetSection" style="display:none;">
+    <div style="background:var(--accent-light);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--accent);">
+      Google Meet ссылка будет создана автоматически после подтверждения
+    </div>
+  </div>
+
+  <button class="btn-primary" id="btn3" disabled onclick="goStep(4)">Подтвердить →</button>
+  <div style="height:10px;"></div>
+  <button class="btn-secondary" onclick="goStep(2)">← Назад</button>
+</div>
+
+<!-- STEP 4: Summary -->
+<div class="step" id="step4">
+  <div class="breadcrumb">
+    <span class="crumb done">1 Дата</span>
+    <span class="sep">›</span>
+    <span class="crumb done">2 Время</span>
+    <span class="sep">›</span>
+    <span class="crumb done">3 Созвон</span>
+    <span class="sep">›</span>
+    <span class="crumb active">4 Подтверждение</span>
+  </div>
+
+  <div class="section">
+    <h2>Проверьте данные</h2>
+    <p style="margin-bottom:14px;">Всё верно? Отправим запрос кандидату.</p>
+    <div class="summary-card">
+      <div class="summary-row">
+        <span class="summary-icon">📅</span>
+        <div>
+          <div class="summary-label">Дата</div>
+          <div class="summary-val" id="sumDate"></div>
+        </div>
+      </div>
+      <div class="summary-row">
+        <span class="summary-icon">⏰</span>
+        <div>
+          <div class="summary-label">Время</div>
+          <div class="summary-val" id="sumTime"></div>
+        </div>
+      </div>
+      <div class="summary-row">
+        <span class="summary-icon">🔗</span>
+        <div>
+          <div class="summary-label">Созвон</div>
+          <div class="summary-val" id="sumLink"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="submitBooking()">Отправить заявку на интервью</button>
+  <div style="height:10px;"></div>
+  <button class="btn-secondary" onclick="goStep(3)">← Назад</button>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const MONTH_NAMES = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+const TIME_SLOTS = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+
+let state = { year: 0, month: 0, selectedDate: null, selectedTime: null, meetType: null, meetLink: '' };
+let today = new Date();
+state.year = today.getFullYear();
+state.month = today.getMonth();
+
+function isAvailable(y, m, d) {
+  const date = new Date(y, m, d);
+  const dow = date.getDay();
+  if (dow === 0 || dow === 6) return false;
+  const past = new Date(y, m, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return !past;
+}
+
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = MONTHS[state.month] + ' ' + state.year;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  DAYS.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-name';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(state.year, state.month, 1).getDay();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const daysInMonth = new Date(state.year, state.month + 1, 0).getDate();
+
+  for (let i = 0; i < offset; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const avail = isAvailable(state.year, state.month, d);
+    const isToday = d === today.getDate() && state.month === today.getMonth() && state.year === today.getFullYear();
+    const isSel = state.selectedDate && state.selectedDate.d === d && state.selectedDate.m === state.month && state.selectedDate.y === state.year;
+
+    el.className = 'cal-day';
+    if (!avail) el.classList.add('disabled');
+    if (isToday) el.classList.add('today');
+    if (isSel) el.classList.add('selected');
+    if (avail) el.classList.add('has-slots');
+    el.textContent = d;
+
+    if (avail) {
+      el.onclick = () => {
+        state.selectedDate = { y: state.year, m: state.month, d };
+        renderCalendar();
+        document.getElementById('btn1').disabled = false;
+      };
+    }
+    grid.appendChild(el);
+  }
+}
+
+document.getElementById('prevMonth').onclick = () => {
+  state.month--;
+  if (state.month < 0) { state.month = 11; state.year--; }
+  renderCalendar();
+};
+document.getElementById('nextMonth').onclick = () => {
+  state.month++;
+  if (state.month > 11) { state.month = 0; state.year++; }
+  renderCalendar();
+};
+
+function renderSlots() {
+  const { y, m, d } = state.selectedDate;
+  document.getElementById('selectedDateLabel').textContent = d + ' ' + MONTH_NAMES[m] + ' ' + y;
+  const grid = document.getElementById('slotsGrid');
+  grid.innerHTML = '';
+  TIME_SLOTS.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'slot' + (state.selectedTime === t ? ' selected' : '');
+    el.textContent = t;
+    el.onclick = () => {
+      state.selectedTime = t;
+      renderSlots();
+      document.getElementById('btn2').disabled = false;
+    };
+    grid.appendChild(el);
+  });
+}
+
+function selectMeet(type) {
+  state.meetType = type;
+  document.getElementById('meetOwn').classList.toggle('selected', type === 'own');
+  document.getElementById('meetGmeet').classList.toggle('selected', type === 'gmeet');
+  document.getElementById('linkSection').style.display = type === 'own' ? 'block' : 'none';
+  document.getElementById('gmeetSection').style.display = type === 'gmeet' ? 'block' : 'none';
+  checkStep3();
+}
+
+function checkStep3() {
+  const btn = document.getElementById('btn3');
+  if (state.meetType === 'gmeet') { btn.disabled = false; return; }
+  if (state.meetType === 'own') {
+    const val = document.getElementById('meetLink').value.trim();
+    btn.disabled = val.length < 5;
+    state.meetLink = val;
+  }
+}
+
+function goStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+  if (n === 2) renderSlots();
+  if (n === 4) renderSummary();
+  window.scrollTo(0, 0);
+}
+
+function renderSummary() {
+  const { y, m, d } = state.selectedDate;
+  document.getElementById('sumDate').textContent = d + ' ' + MONTH_NAMES[m] + ' ' + y;
+  document.getElementById('sumTime').textContent = state.selectedTime + ' (МСК)';
+  if (state.meetType === 'gmeet') {
+    document.getElementById('sumLink').textContent = 'Google Meet (создастся автоматически)';
+  } else {
+    document.getElementById('sumLink').textContent = state.meetLink;
+  }
+}
+
+function submitBooking() {
+  const { y, m, d } = state.selectedDate;
+  const data = {
+    date: d + '.' + (m + 1) + '.' + y,
+    time: state.selectedTime,
+    meet_type: state.meetType,
+    meet_link: state.meetType === 'own' ? state.meetLink : 'google_meet'
+  };
+
+  if (tg) {
+    tg.sendData(JSON.stringify(data));
+  } else {
+    alert('Заявка отправлена: ' + JSON.stringify(data));
+  }
+}
+
+renderCalendar();
+</script>
+</body>
+</html>
