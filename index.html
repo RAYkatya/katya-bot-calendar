@@ -459,7 +459,7 @@ function submitBooking() {
   btn.textContent = 'Отправляем...';
 
   const { y, m, d } = state.selectedDate;
-  const userId = tg?.initDataUnsafe?.user?.id || 'unknown';
+  const userId = tg?.initDataUnsafe?.user?.id || tg?.initDataUnsafe?.user?.username || tg?.chat?.id || 'unknown';
   const userName = tg?.initDataUnsafe?.user?.first_name || 'Пользователь';
 
   // ⬇️ ВСТАВЬ СВОЙ ТОКЕН ЗДЕСЬ (одно место):
