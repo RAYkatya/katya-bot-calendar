@@ -472,7 +472,7 @@ function submitBooking() {
       text: text,
       reply_markup: JSON.stringify({
         inline_keyboard: [[
-          { text: '✅ Подтвердить', callback_data: 'confirm_' + userId + '_' + dateStr + '_' + state.selectedTime },
+          { text: '✅ Подтвердить', callback_data: 'confirm_' + userId + '_' + dateStr.replace(/\./g,'-') + '_' + state.selectedTime.replace(':','-') + '_' + encodeURIComponent(state.meetLink).substring(0,30) },
           { text: '❌ Отклонить', callback_data: 'decline_' + userId }
         ]]
       })
